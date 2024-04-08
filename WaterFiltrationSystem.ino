@@ -3,44 +3,44 @@
 #include <WaterLevelSensor.h>
 #include <TimeFormatter.h>
 
+const int sensor_lcd_row = 0;
+ // delay between turning on/off the pump. This is to prevent multiple pumps from turning on/off at the same time
+const unsigned long toggle_delay_ms = 2000;
+
 // function prototype, needed when passing class reference
 void initializePump(Pump &pump, int number, unsigned long feedingIntervalInMs, unsigned long feedingDurationInMs);
 void monitorPump(Pump &pump);
+void updatePumpStatus(Pump &pump, bool turnOn);
 
-LiquidCrystal_I2C lcd(0x27, 16, 4);  // Change the I2C address if necessary
+LiquidCrystal_I2C _lcd(0x27, 16, 4);  // Change the I2C address if necessary
 
-Pump pump1(6);
-Pump pump2(7);
-Pump pump3(8);
+Pump _pump1(6);
+Pump _pump2(7);
+Pump _pump3(8);
 
-const int sensor_lcd_row = 0;
-WaterLevelSensor sensors[2] = 
-{
-  WaterLevelSensor(0),
-  WaterLevelSensor(12)
-};
+WaterLevelSensor _sensor1 = WaterLevelSensor(0);
 
 void setup()
 {
   Serial.begin(9600);
 
-  lcd.begin(16, 4);
-  lcd.backlight();
+  _lcd.begin(16, 4);
+  _lcd.backlight();
   
   initializePump(
-    pump1, 
+    _pump1, 
     1, // pump number
     TimeFormatter().withHours(0).withSeconds(120).toMillis(), // feeding interval
     TimeFormatter().withSeconds(23).toMillis()); // feeding duration
 
   initializePump(
-    pump2, 
+    _pump2, 
     2, // pump number
     TimeFormatter().withHours(4).toMillis(), // feeding interval
     TimeFormatter().withSeconds(20).toMillis());
 
   initializePump(
-    pump3, 
+    _pump3, 
     3, // pump number
     TimeFormatter().withHours(4).toMillis(), // feeding interval
     TimeFormatter().withSeconds(25).toMillis()); 
@@ -48,9 +48,9 @@ void setup()
 
 void loop()
 {
-  monitorPump(pump1);
-  monitorPump(pump2);
-  monitorPump(pump3);
+  monitorPump(_pump1);
+  monitorPump(_pump2);
+  monitorPump(_pump3);
 
   monitorSensors();
   delay(500);
@@ -58,10 +58,13 @@ void loop()
 
 void monitorSensors()
 {
-  for (int i = 0; i < 2; i++) {
-    int column = i * 7; // We are displaying all sensors horizontally. Each will occupy 7 characters.
-    lcd.setCursor(column, sensor_lcd_row);
-    lcd.print("S" + String(i + 1) + ":" + (sensors[i].currentLevel()));
+  _lcd.setCursor(0, sensor_lcd_row);
+  _lcd.print("S1:" + _sensor1.currentLevel());
+
+  if (!_sensor1.isAboveMinimum())
+  {
+    _pump2.isEnabled = false;
+    _pump3.isEnabled = false;
   }
 }
 
@@ -71,25 +74,31 @@ void initializePump(Pump &pump, int number, unsigned long feedingIntervalInMs, u
   pump.feedingDurationInMs = feedingDurationInMs;
   pump.number = number;
   
-  lcd.setCursor(0, number);
-  lcd.print("P" + String(number) + ": OFF");
+  _lcd.setCursor(0, number);
+  _lcd.print("P" + String(number) + ": OFF");
 }
 
 void monitorPump(Pump &pump)
 {
+  if (!pump.isEnabled)
+  {
+    if (pump.isOn)
+    {
+      updatePumpStatus(pump, false);
+    }
+    // This will prevent the pump from turning on and timer from starting
+    return;
+  }
+
   unsigned long timePassed = pump.timePassedSinceLastOn();
 
   if (!pump.isOn)
   {
-    
     if(timePassed > pump.feedingIntervalInMs)
     {
-      pump.turnOn();
-      updatePumpStatus(pump.number, "ON");
+      updatePumpStatus(pump, true);
       return;
     }
-
-    Serial.println(String(pump.feedingIntervalInMs - timePassed));
 
     updatePumpRemainingTime(pump.number, TimeFormatter().withMilliSeconds(pump.feedingIntervalInMs - timePassed).toReadableTime());
   }
@@ -97,30 +106,43 @@ void monitorPump(Pump &pump)
   {
     if(timePassed > pump.feedingDurationInMs)
     {
-      pump.turnOff();
-      updatePumpStatus(pump.number, "OFF");
+      updatePumpStatus(pump, false);
       return;
     }
     
-    Serial.println(String(pump.feedingDurationInMs - timePassed));
-          
     updatePumpRemainingTime(pump.number, TimeFormatter().withMilliSeconds(pump.feedingDurationInMs - timePassed).toReadableTime());
   }
 }
 
-void updatePumpStatus(int pumpNumber, String status)
+void updatePumpStatus(Pump &pump, bool turnOn)
 {
-  lcd.setCursor(4, pumpNumber);
-  // We are adding space to clear the previous timer
-  lcd.print(status + "         ");
+  _lcd.setCursor(4, pump.number);
+
+  if (turnOn)
+  {
+    pump.turnOn(toggle_delay_ms);
+      
+    // We are adding space to clear the previous timer
+    _lcd.print("ON");
+  }
+  else
+  {
+    pump.turnOff();
+    _lcd.print("OFF");
+  }
   
-  Serial.println("P" + String(pumpNumber) + "STATUS: " + status);
+  updatePumpRemainingTime(pump.number, "--:--:--");
 }
 
+/**
+ * Updates the display with the remaining time for the pump to change its status
+ * @param pumpNumber The pump number
+ * @param remainingTime The remaining time in HH:MM:SS format
+ */
 void updatePumpRemainingTime(int pumpNumber, String remainingTime)
 {
-  lcd.setCursor(8, pumpNumber);
-  lcd.print(remainingTime);
+  _lcd.setCursor(8, pumpNumber);
+  _lcd.print(remainingTime);
     
   Serial.println("P" + String(pumpNumber) + "REMAINING TIME: " + remainingTime);
 }

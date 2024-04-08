@@ -14,10 +14,16 @@ String WaterLevelSensor::currentLevel()
   if (_pin == -1)
     return "-";
   
-  bool isAboveMinimum = digitalRead(_pin);
-  
-  if (isAboveMinimum)
+  if (isAboveMinimum())
     return "OK "; // we need space to clear W in LOW
   else
     return "LOW";
+}
+
+bool WaterLevelSensor::isAboveMinimum()
+{
+  if (_pin == -1)
+    return true;
+  
+  return digitalRead(_pin);
 }

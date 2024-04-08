@@ -7,12 +7,13 @@ class Pump
 {
   public:
   	Pump(int pin);
-  	void turnOn();
-  	void turnOff();
+  	void turnOn(unsigned long delayInMs = 0);
+  	void turnOff(unsigned long delayInMs = 0);
   	unsigned long feedingIntervalInMs;
   	unsigned long feedingDurationInMs;
   	int number;
   	bool isOn;
+  	bool isEnabled;
   	unsigned long timePassedSinceLastOn();
   private:
   	int _pin;

@@ -6,8 +6,9 @@
 class WaterLevelSensor
 {
   public:
-  	WaterLevelSensor(int pin);
+  	WaterLevelSensor(int pin = -1);
   	String currentLevel();
+	bool isAboveMinimum();
   private:
   	int _pin;
 };
