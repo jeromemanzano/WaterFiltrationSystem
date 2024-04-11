@@ -22,8 +22,6 @@ WaterLevelSensor _sensor1 = WaterLevelSensor(0);
 
 void setup()
 {
-  Serial.begin(9600);
-
   _lcd.begin(16, 4);
   _lcd.backlight();
   
@@ -139,10 +137,8 @@ void updatePumpStatus(Pump &pump, bool turnOn)
  * @param pumpNumber The pump number
  * @param remainingTime The remaining time in HH:MM:SS format
  */
-void updatePumpRemainingTime(int pumpNumber, String remainingTime)
+void updatePumpRemainingTime(int pumpNumber, const String& remainingTime)
 {
   _lcd.setCursor(8, pumpNumber);
   _lcd.print(remainingTime);
-    
-  Serial.println("P" + String(pumpNumber) + "REMAINING TIME: " + remainingTime);
 }
