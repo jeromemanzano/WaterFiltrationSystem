@@ -6,7 +6,8 @@ Pump::Pump(int pin) : isEnabled(true)
   _pin = pin;
   _lastOn = 0UL;
   pinMode(pin, OUTPUT);
-  turnOff();
+  // Turn off the pump by default
+  digitalWrite(_pin, HIGH);
 }
 
 void Pump::turnOn(unsigned long delayInMs)
